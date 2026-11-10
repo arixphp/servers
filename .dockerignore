@@ -1,0 +1,14 @@
+**
+!docker/
+!docker/apache/
+!docker/apache/site.conf
+!docker/frankenphp/
+!docker/frankenphp/Caddyfile
+!docker/nginx/
+!docker/nginx/default.conf
+!docker/nginx/start.sh
+!docker/openlitespeed/
+!docker/openlitespeed/vhconf.conf
+!.work/
+!.work/app/
+!.work/app/**

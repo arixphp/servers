@@ -1,0 +1,24 @@
+{
+    auto_https off
+    frankenphp
+}
+
+:80 {
+    root * /app
+    route {
+        @private path_regexp private (?i)^/(?:app|core|cli|tests|docs|storage|assets)(?:/|$)|(?:^|/)\.
+        respond @private 403
+
+        @public path_regexp public (?i)^/(?:robots\.txt|favicon\.ico|styles/(?:[a-z0-9_-]+/)*[a-z0-9_-]+\.css|scripts/(?:[a-z0-9_-]+/)*[a-z0-9_-]+\.js|fonts/(?:[a-z0-9_-]+/)*[a-z0-9_-]+\.(?:woff2?|ttf|otf)|media/(?:[a-z0-9_-]+/)*[a-z0-9_-]+\.(?:avif|gif|ico|jpe?g|png|webp|mp4|webm|ogv))$
+        handle @public {
+            @badmethod not method GET HEAD
+            respond @badmethod 405
+            file_server
+        }
+
+        @blocked path_regexp blocked (?i)^/(?:styles|scripts|fonts|media)(?:/|$)|\.[^/]+$
+        respond @blocked 403
+        rewrite * /index.php
+        php_server
+    }
+}

@@ -1,0 +1,56 @@
+name: Deployment Security
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 7 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - server: apache
+            port: 80
+          - server: nginx
+            port: 80
+          - server: openlitespeed
+            port: 8088
+          - server: frankenphp
+            port: 80
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Test suite scripts
+        run: python3 -m unittest discover -s tests -v
+      - name: Install Arix CLI 0.4.5
+        shell: bash
+        run: |
+          curl --fail --location --silent --show-error --retry 3 \
+            -o "$RUNNER_TEMP/arix.tar.gz" \
+            https://github.com/arixphp/cli/releases/download/0.4.5/arix-0.4.5-linux-x64.tar.gz
+          echo '95fdc9e5089abbb47be1eea4db58103100286c890d4d03e936b86c16ede5d69e  '"$RUNNER_TEMP/arix.tar.gz" | sha256sum -c -
+          mkdir "$RUNNER_TEMP/arix-cli"
+          tar -xzf "$RUNNER_TEMP/arix.tar.gz" -C "$RUNNER_TEMP/arix-cli"
+          echo "$RUNNER_TEMP/arix-cli" >> "$GITHUB_PATH"
+      - name: Create application
+        run: bash scripts/prepare-app.sh
+      - name: Build server image
+        run: docker build -f "docker/${{ matrix.server }}/Dockerfile" -t "arix-security:${{ matrix.server }}" .
+      - name: Start server
+        run: docker run -d --name arix-test -p "127.0.0.1:8080:${{ matrix.port }}" "arix-security:${{ matrix.server }}"
+      - name: Wait for server
+        run: bash scripts/wait-http.sh http://127.0.0.1:8080/
+      - name: Run security tests
+        run: bash scripts/run-security-tests.sh
+      - name: Logs on failure
+        if: failure()
+        run: docker logs arix-test || true
