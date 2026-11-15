@@ -62,9 +62,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for revision in cdf7c2b8c62ed9ad047c931bb49aa450e1c0439f 87835d264757815fa1f279a07a51a124c6293b40; do
-            echo "::group::Policy $revision"
+          before=cdf7c2b8c62ed9ad047c931bb49aa450e1c0439f
+          after=87835d264757815fa1f279a07a51a124c6293b40
+          for scenario in before root-only directories-only after; do
+            echo "::group::Policy $scenario"
             for file in .htaccess styles/.htaccess scripts/.htaccess fonts/.htaccess media/.htaccess; do
+              revision="$before"
+              if [[ "$scenario" == after ]] \
+                || [[ "$scenario" == root-only && "$file" == .htaccess ]] \
+                || [[ "$scenario" == directories-only && "$file" != .htaccess ]]; then
+                revision="$after"
+              fi
               curl --fail --location --silent --show-error --retry 3 \
                 "https://raw.githubusercontent.com/barbosa89/hellen-suite-web/$revision/$file" \
                 -o "$RUNNER_TEMP/arix-policy-htaccess"
@@ -74,9 +82,9 @@ jobs:
             bash scripts/wait-http.sh http://127.0.0.1:8080/
             for scope in public private; do
               if bash scripts/run-security-tests.sh "$scope"; then
-                echo "RESULT $revision $scope: PASS"
+                echo "RESULT $scenario $scope: PASS"
               else
-                echo "RESULT $revision $scope: FAIL"
+                echo "RESULT $scenario $scope: FAIL"
               fi
             done
             echo 'Response headers for GET /core:'
