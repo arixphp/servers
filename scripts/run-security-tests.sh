@@ -55,28 +55,31 @@ public() {
   echo "PASS GET $path ($status)"
 }
 
+failed=0
 if [[ "$scope" != public ]]; then
 for path in '/.env' '/.arix.json' '/.git/config' '/app/config/security-probe.txt' '/core/security-probe.txt' '/core/security-probe.php' '/storage/security-probe.txt' '/app/routes.php' '/core/functions.php' '/security-probe.bak' '/security-probe.old' '/security-probe.php~' '/security-probe.swp' '/app/' '/core' '/storage/' '/%2eenv' '/app//config/security-probe.txt' '/app/./config/security-probe.txt' '/media/../core/security-probe.txt' '/APP/config/security-probe.txt'; do
-  private GET "$path"
+  private GET "$path" || failed=1
 done
 # Some servers reject encoded slashes before routing; a 400 is safe only for
 # this specific request and is still inspected for leaked content.
-private GET '/app%2fconfig/security-probe.txt' yes
-private POST '/core/security-probe.php'
+private GET '/app%2fconfig/security-probe.txt' yes || failed=1
+private POST '/core/security-probe.php' || failed=1
 # curl -I handles HEAD without waiting for a body from a compliant server.
-status="$(curl --path-as-is --silent --show-error --max-time 10 --head --output /dev/null --write-out '%{http_code}' "$base/.env")"
-if [[ "$status" != 403 && "$status" != 404 ]]; then
+if ! status="$(curl --path-as-is --silent --show-error --max-time 10 --head --output /dev/null --write-out '%{http_code}' "$base/.env")"; then
+  echo 'FAIL HEAD /.env: connection error' >&2
+  failed=1
+elif [[ "$status" != 403 && "$status" != 404 ]]; then
   echo "FAIL HEAD /.env: HTTP $status" >&2
-  exit 1
+  failed=1
+else
+  echo "PASS HEAD /.env ($status)"
 fi
-echo "PASS HEAD /.env ($status)"
 fi
 if [[ "$scope" != private ]]; then
-failed=0
 public '/' '<html' || failed=1
 public '/about' '<html' || failed=1
 for path in '/styles/app.css' '/scripts/app.js' '/media/security-probe.png' '/fonts/source-sans-3-roman-latin.woff2'; do
   public_asset "$path" || failed=1
 done
-exit "$failed"
 fi
+exit "$failed"

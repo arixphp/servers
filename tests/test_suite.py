@@ -112,6 +112,8 @@ echo "Skeleton arixphp/app commit 1234567890123456789012345678901234567890."
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('FAIL GET /.env', result.stdout + result.stderr)
         self.assertNotIn('PASS GET /styles/app.css', result.stdout)
+        self.assertIn('PASS GET /storage/', result.stdout)
+        self.assertIn('PASS POST /core/security-probe.php', result.stdout)
         result = subprocess.run(command + ['invalid'], env=env, capture_output=True, text=True)
         self.assertNotEqual(result.returncode, 0)
         SecurityHandler.mode = 'denied:/styles/app.css'

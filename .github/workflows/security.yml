@@ -57,6 +57,33 @@ jobs:
       - name: Check private access
         if: ${{ !cancelled() && steps.ready.outcome == 'success' }}
         run: bash scripts/run-security-tests.sh private
+      - name: Compare historical LiteSpeed policies
+        if: ${{ !cancelled() && matrix.server == 'litespeed' && steps.ready.outcome == 'success' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for revision in cdf7c2b8c62ed9ad047c931bb49aa450e1c0439f 87835d264757815fa1f279a07a51a124c6293b40; do
+            echo "::group::Policy $revision"
+            for file in .htaccess styles/.htaccess scripts/.htaccess fonts/.htaccess media/.htaccess; do
+              curl --fail --location --silent --show-error --retry 3 \
+                "https://raw.githubusercontent.com/barbosa89/hellen-suite-web/$revision/$file" \
+                -o "$RUNNER_TEMP/arix-policy-htaccess"
+              docker cp "$RUNNER_TEMP/arix-policy-htaccess" "arix-test:/var/www/vhosts/localhost/html/$file"
+            done
+            docker restart arix-test
+            bash scripts/wait-http.sh http://127.0.0.1:8080/
+            for scope in public private; do
+              if bash scripts/run-security-tests.sh "$scope"; then
+                echo "RESULT $revision $scope: PASS"
+              else
+                echo "RESULT $revision $scope: FAIL"
+              fi
+            done
+            echo 'Response headers for GET /core:'
+            curl --path-as-is --silent --show-error --max-time 10 --output /dev/null \
+              --dump-header - http://127.0.0.1:8080/core
+            echo '::endgroup::'
+          done
       - name: Logs on failure
         if: failure()
         run: docker logs arix-test || true

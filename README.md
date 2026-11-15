@@ -70,3 +70,11 @@ hide the other. `run-security-tests.sh public` or `private` selects one group;
 without arguments it runs both. Public checks report every asset even if another
 public request fails. A passing run checks the generated skeleton, not the
 historical configuration from a deployed application.
+
+The LiteSpeed Enterprise job also performs a diagnostic comparison after the
+normal checks: it downloads the five `.htaccess` files from the parent and the
+fix commit of `barbosa89/hellen-suite-web`, applies each set to the same test
+container, restarts the server and reports public and private check results and
+the `/core` response headers. These historical results are observations, not
+passing expectations; the generated skeleton's checks still determine the job
+result. This comparison requires GitHub access and does not change `app/`.
