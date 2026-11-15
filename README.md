@@ -52,8 +52,10 @@ The CLI version and container base image are pinned; package repositories used
 during the image build are not frozen, so the complete build is not bit-for-bit
 reproducible.
 
-The HTTP suite rejects private responses other than 403/404, checks for synthetic
-markers, PHP source and common errors, and does not follow redirects. It is a
+The HTTP suite checks that representative CSS, JavaScript, image and font assets
+return HTTP 200 with their exact contents. It also rejects private responses
+other than 403/404, checks for synthetic markers, PHP source and common errors,
+and does not follow redirects. It is a
 starting point, not a complete security audit. Only the encoded-slash request
 `/app%2fconfig/security-probe.txt` also permits HTTP 400, and its body is still
 checked for leaks. CI runs on pull requests, pushes,

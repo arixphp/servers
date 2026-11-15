@@ -2,6 +2,8 @@
 set -euo pipefail
 
 base="${BASE_URL:-http://127.0.0.1:8080}"
+root="$(cd "$(dirname "$0")/.." && pwd)"
+app="${ARIX_APP:-$root/.work/app}"
 body="$(mktemp)"
 trap 'rm -f "$body"' EXIT
 
@@ -12,6 +14,16 @@ request() {
     return 1
   fi
   printf '%s' "$status"
+}
+
+public_asset() {
+  local path="$1" status
+  status="$(request GET "$path")" || return 1
+  if [[ "$status" != 200 ]] || ! cmp -s "$body" "$app$path"; then
+    echo "FAIL GET $path: HTTP $status or unexpected content" >&2
+    return 1
+  fi
+  echo "PASS GET $path ($status)"
 }
 
 private() {
@@ -54,4 +66,6 @@ fi
 echo "PASS HEAD /.env ($status)"
 public '/' '<html'
 public '/about' '<html'
-public '/media/security-probe.png' 'ARIX_TEST_PUBLIC'
+for path in '/styles/app.css' '/scripts/app.js' '/media/security-probe.png' '/fonts/source-sans-3-roman-latin.woff2'; do
+  public_asset "$path"
+done

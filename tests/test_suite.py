@@ -8,6 +8,13 @@ import unittest
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
+FONT = 'fonts/source-sans-3-roman-latin.woff2'
+ASSETS = {
+    '/styles/app.css': b'body { color: black; }\n',
+    '/scripts/app.js': b'console.log("hello");\n',
+    '/media/security-probe.png': b'ARIX_TEST_PUBLIC\n',
+    '/' + FONT: (ROOT / 'fixtures' / FONT).read_bytes(),
+}
 
 
 class SecurityHandler(http.server.BaseHTTPRequestHandler):
@@ -17,8 +24,13 @@ class SecurityHandler(http.server.BaseHTTPRequestHandler):
         pass
 
     def do_GET(self):
-        if self.path == '/media/security-probe.png':
-            status, body = 200, b'ARIX_TEST_PUBLIC'
+        if self.path in ASSETS:
+            if self.mode == 'denied:' + self.path:
+                status, body = 403, b'Forbidden'
+            elif self.mode == 'wrong:' + self.path:
+                status, body = 200, b'<html>Unexpected page</html>'
+            else:
+                status, body = 200, ASSETS[self.path]
         elif self.path in ('/', '/about'):
             status, body = 200, b'<html>OK</html>'
         elif self.mode == 'leak' and self.path == '/.env':
@@ -69,6 +81,7 @@ echo "Skeleton arixphp/app commit 1234567890123456789012345678901234567890."
             self.assertIn('1234567890123456789012345678901234567890', result.stdout)
             self.assertEqual((parent / 'app/.env').read_text(), 'ARIX_SECURITY_PROBE=ARIX_TEST_PRIVATE_7F3B\n')
             self.assertEqual((parent / 'app/.arix.json').read_text(), '{"version":"1"}\n')
+            self.assertEqual((parent / 'app' / FONT).read_bytes(), (ROOT / 'fixtures' / FONT).read_bytes())
 
     def test_http_suite_accepts_protected_server_and_rejects_leak(self):
         server = http.server.HTTPServer(('127.0.0.1', 0), SecurityHandler)
@@ -76,7 +89,14 @@ echo "Skeleton arixphp/app commit 1234567890123456789012345678901234567890."
         thread.start()
         self.addCleanup(server.server_close)
         self.addCleanup(server.shutdown)
-        env = dict(os.environ, BASE_URL=f'http://127.0.0.1:{server.server_port}')
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        app = pathlib.Path(directory.name)
+        for path, content in ASSETS.items():
+            asset = app / path.lstrip('/')
+            asset.parent.mkdir(parents=True, exist_ok=True)
+            asset.write_bytes(content)
+        env = dict(os.environ, BASE_URL=f'http://127.0.0.1:{server.server_port}', ARIX_APP=str(app))
         command = ['bash', str(ROOT / 'scripts/run-security-tests.sh')]
         result = subprocess.run(command, env=env, capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -90,6 +110,13 @@ echo "Skeleton arixphp/app commit 1234567890123456789012345678901234567890."
                 result = subprocess.run(command, env=env, capture_output=True, text=True)
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn('FAIL', result.stdout + result.stderr)
+        for path in ASSETS:
+            for problem in ('denied', 'wrong'):
+                with self.subTest(path=path, problem=problem):
+                    SecurityHandler.mode = f'{problem}:{path}'
+                    result = subprocess.run(command, env=env, capture_output=True, text=True)
+                    self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+                    self.assertIn(f'FAIL GET {path}', result.stdout + result.stderr)
 
     def test_prepare_rejects_existing_destination_without_deleting_it(self):
         with tempfile.TemporaryDirectory() as directory:

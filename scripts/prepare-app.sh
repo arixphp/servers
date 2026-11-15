@@ -26,10 +26,10 @@ for required in index.php .arix.json .htaccess; do
     exit 1
   fi
 done
-for dir in app/config core storage media; do
+for dir in app/config core storage media fonts; do
   mkdir -p "$app/$dir"
 done
-for file in .env .git/config app/config/security-probe.txt core/security-probe.txt storage/security-probe.txt core/security-probe.php security-probe.bak security-probe.old security-probe.php~ security-probe.swp media/security-probe.png; do
+for file in .env .git/config app/config/security-probe.txt core/security-probe.txt storage/security-probe.txt core/security-probe.php security-probe.bak security-probe.old security-probe.php~ security-probe.swp media/security-probe.png fonts/source-sans-3-roman-latin.woff2; do
   if [[ -e "$app/$file" || -L "$app/$file" ]]; then
     echo "Fixture collision: $file" >&2
     exit 1
@@ -42,4 +42,5 @@ for file in .git/config app/config/security-probe.txt core/security-probe.txt st
 done
 printf '%s\n' "<?php echo 'ARIX_TEST_PHP_EXECUTED_7F3B';" > "$app/core/security-probe.php"
 printf '%s\n' 'ARIX_TEST_PUBLIC' > "$app/media/security-probe.png"
+cp "$root/fixtures/fonts/source-sans-3-roman-latin.woff2" "$app/fonts/source-sans-3-roman-latin.woff2"
 printf '%s\n' "$sha" > "$parent/app-sha.txt"

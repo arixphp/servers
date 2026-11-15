@@ -49,7 +49,7 @@ jobs:
         run: docker run -d --name arix-test -p "127.0.0.1:8080:${{ matrix.port }}" "arix-security:${{ matrix.server }}"
       - name: Wait for server
         run: bash scripts/wait-http.sh http://127.0.0.1:8080/
-      - name: Run security tests
+      - name: Run compliance tests
         run: bash scripts/run-security-tests.sh
       - name: Logs on failure
         if: failure()
