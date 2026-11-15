@@ -64,7 +64,7 @@ jobs:
           set -euo pipefail
           before=cdf7c2b8c62ed9ad047c931bb49aa450e1c0439f
           after=87835d264757815fa1f279a07a51a124c6293b40
-          for scenario in before root-only directories-only after; do
+          for scenario in before root-only without-rewrite-off without-uri-if without-method-if directories-only after; do
             echo "::group::Policy $scenario"
             for file in .htaccess styles/.htaccess scripts/.htaccess fonts/.htaccess media/.htaccess; do
               revision="$before"
@@ -76,6 +76,19 @@ jobs:
               curl --fail --location --silent --show-error --retry 3 \
                 "https://raw.githubusercontent.com/barbosa89/hellen-suite-web/$revision/$file" \
                 -o "$RUNNER_TEMP/arix-policy-htaccess"
+              if [[ "$file" != .htaccess ]]; then
+                case "$scenario" in
+                  without-rewrite-off)
+                    sed -i '/^RewriteEngine Off$/d' "$RUNNER_TEMP/arix-policy-htaccess"
+                    ;;
+                  without-uri-if)
+                    sed -i '/^<If "%{REQUEST_URI}/,/^<\/If>/d' "$RUNNER_TEMP/arix-policy-htaccess"
+                    ;;
+                  without-method-if)
+                    sed -i '/^<If "%{REQUEST_METHOD}/,/^<\/If>/d' "$RUNNER_TEMP/arix-policy-htaccess"
+                    ;;
+                esac
+              fi
               docker cp "$RUNNER_TEMP/arix-policy-htaccess" "arix-test:/var/www/vhosts/localhost/html/$file"
             done
             docker restart arix-test

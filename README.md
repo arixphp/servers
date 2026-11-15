@@ -77,6 +77,9 @@ fix commit of `barbosa89/hellen-suite-web`, applies each set to the same test
 container, restarts the server and reports public and private check results and
 the `/core` response headers. Two additional mixed scenarios apply only the
 changed root file or only the changed asset-directory files, respectively.
+Three further scenarios remove one kind of directive at a time from the
+original asset-directory files: `RewriteEngine Off`, the URI condition or the
+method condition. They are diagnostic only, not proposed security policies.
 These historical results are observations, not
 passing expectations; the generated skeleton's checks still determine the job
 result. This comparison requires GitHub access and does not change `app/`.
