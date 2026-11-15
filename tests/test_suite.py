@@ -53,9 +53,22 @@ class SecurityHandler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    do_POST = do_GET
+    def do_POST(self):
+        if self.path not in ASSETS:
+            return self.do_GET()
+        self.send_response(200 if self.mode == 'post-allowed:' + self.path else 405)
+        if self.mode != 'post-no-allow:' + self.path:
+            self.send_header('Allow', 'GET, HEAD')
+        self.end_headers()
+
+    do_PUT = do_POST
+    do_DELETE = do_POST
 
     def do_HEAD(self):
+        if self.mode == 'head-denied:' + self.path:
+            self.send_response(403)
+            self.end_headers()
+            return
         self.do_GET()
 
 
@@ -128,6 +141,16 @@ echo "Skeleton arixphp/app commit 1234567890123456789012345678901234567890."
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn('FAIL', result.stdout + result.stderr)
         for path in ASSETS:
+            SecurityHandler.mode = 'head-denied:' + path
+            result = subprocess.run(command + ['public'], env=env, capture_output=True, text=True)
+            self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn(f'FAIL HEAD {path}', result.stdout + result.stderr)
+            for problem in ('post-allowed', 'post-no-allow'):
+                with self.subTest(path=path, problem=problem):
+                    SecurityHandler.mode = f'{problem}:{path}'
+                    result = subprocess.run(command + ['public'], env=env, capture_output=True, text=True)
+                    self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+                    self.assertIn(f'FAIL POST {path}', result.stdout + result.stderr)
             for problem in ('denied', 'wrong'):
                 with self.subTest(path=path, problem=problem):
                     SecurityHandler.mode = f'{problem}:{path}'

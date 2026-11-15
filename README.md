@@ -56,7 +56,8 @@ during the image build are not frozen, so the complete build is not bit-for-bit
 reproducible.
 
 The HTTP suite checks that representative CSS, JavaScript, image and font assets
-return HTTP 200 with their exact contents. It also rejects private responses
+return HTTP 200 with their exact contents and reject POST, PUT and DELETE with
+HTTP 405 and `Allow: GET, HEAD`. It also rejects private responses
 other than 403/404, checks for synthetic markers, PHP source and common errors,
 and does not follow redirects. It is a
 starting point, not a complete security audit. Only the encoded-slash request
@@ -70,17 +71,3 @@ hide the other. `run-security-tests.sh public` or `private` selects one group;
 without arguments it runs both. Public checks report every asset even if another
 public request fails. A passing run checks the generated skeleton, not the
 historical configuration from a deployed application.
-
-The LiteSpeed Enterprise job also performs a diagnostic comparison after the
-normal checks: it downloads the five `.htaccess` files from the parent and the
-fix commit of `barbosa89/hellen-suite-web`, applies each set to the same test
-container, restarts the server and reports public and private check results and
-the `/core` response headers. Two additional mixed scenarios apply only the
-changed root file or only the changed asset-directory files, respectively.
-Three further scenarios remove one kind of directive at a time from the
-original asset-directory files: `RewriteEngine Off`, the URI condition or the
-method condition. The comparison also records POST response headers for each
-public asset; these scenarios are diagnostic only, not proposed security policies.
-These historical results are observations, not
-passing expectations; the generated skeleton's checks still determine the job
-result. This comparison requires GitHub access and does not change `app/`.

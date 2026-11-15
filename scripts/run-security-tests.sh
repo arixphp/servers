@@ -10,7 +10,8 @@ if [[ "$scope" != all && "$scope" != public && "$scope" != private ]] || (( $# >
   exit 2
 fi
 body="$(mktemp)"
-trap 'rm -f "$body"' EXIT
+headers="$(mktemp)"
+trap 'rm -f "$body" "$headers"' EXIT
 
 request() {
   local method="$1" path="$2" status
@@ -21,6 +22,19 @@ request() {
   printf '%s' "$status"
 }
 
+asset_method() {
+  local method="$1" path="$2" status
+  if ! status="$(curl --path-as-is --silent --show-error --max-time 10 --request "$method" --output "$body" --dump-header "$headers" --write-out '%{http_code}' "$base$path")"; then
+    echo "FAIL $method $path: connection error" >&2
+    return 1
+  fi
+  if [[ "$status" != 405 ]] || ! tr -d '\r' < "$headers" | grep -Eiq '^Allow:[[:space:]]*GET[[:space:]]*,[[:space:]]*HEAD[[:space:]]*$'; then
+    echo "FAIL $method $path: HTTP $status or invalid Allow header" >&2
+    return 1
+  fi
+  echo "PASS $method $path ($status)"
+}
+
 public_asset() {
   local path="$1" status
   status="$(request GET "$path")" || return 1
@@ -29,6 +43,19 @@ public_asset() {
     return 1
   fi
   echo "PASS GET $path ($status)"
+}
+
+head_asset() {
+  local path="$1" status
+  if ! status="$(curl --path-as-is --silent --show-error --max-time 10 --head --output /dev/null --write-out '%{http_code}' "$base$path")"; then
+    echo "FAIL HEAD $path: connection error" >&2
+    return 1
+  fi
+  if [[ "$status" != 200 ]]; then
+    echo "FAIL HEAD $path: HTTP $status" >&2
+    return 1
+  fi
+  echo "PASS HEAD $path ($status)"
 }
 
 private() {
@@ -80,6 +107,10 @@ public '/' '<html' || failed=1
 public '/about' '<html' || failed=1
 for path in '/styles/app.css' '/scripts/app.js' '/media/security-probe.png' '/fonts/source-sans-3-roman-latin.woff2'; do
   public_asset "$path" || failed=1
+  head_asset "$path" || failed=1
+  for method in POST PUT DELETE; do
+    asset_method "$method" "$path" || failed=1
+  done
 done
 fi
 exit "$failed"
