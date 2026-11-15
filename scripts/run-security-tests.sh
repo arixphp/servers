@@ -15,7 +15,7 @@ trap 'rm -f "$body" "$headers"' EXIT
 
 request() {
   local method="$1" path="$2" status
-  if ! status="$(curl --path-as-is --silent --show-error --max-time 10 --request "$method" --output "$body" --write-out '%{http_code}' "$base$path")"; then
+  if ! status="$(curl --path-as-is --silent --show-error --max-time 10 --request "$method" --output "$body" --dump-header "$headers" --write-out '%{http_code}' "$base$path")"; then
     echo "FAIL $method $path: connection error" >&2
     return 1
   fi
@@ -63,6 +63,9 @@ private() {
   status="$(request "$method" "$path")" || return 1
   if [[ "$status" != 403 && "$status" != 404 && ! ( "$allow_bad_request" == yes && "$status" == 400 ) ]]; then
     echo "FAIL $method $path: HTTP $status (expected 403/404)" >&2
+    if [[ "$status" == 3?? ]]; then
+      tr -d '\r' < "$headers" | grep -i '^Location:' >&2 || true
+    fi
     return 1
   fi
   if grep -Eiq 'ARIX_TEST_PRIVATE_7F3B|ARIX_TEST_PHP_EXECUTED_7F3B|<\?php|stack trace|fatal error|uncaught exception' "$body"; then
@@ -84,7 +87,7 @@ public() {
 
 failed=0
 if [[ "$scope" != public ]]; then
-for path in '/.env' '/.arix.json' '/.git/config' '/app/config/security-probe.txt' '/core/security-probe.txt' '/core/security-probe.php' '/storage/security-probe.txt' '/app/routes.php' '/core/functions.php' '/security-probe.bak' '/security-probe.old' '/security-probe.php~' '/security-probe.swp' '/app/' '/core' '/storage/' '/%2eenv' '/app//config/security-probe.txt' '/app/./config/security-probe.txt' '/media/../core/security-probe.txt' '/APP/config/security-probe.txt'; do
+for path in '/.env' '/.arix.json' '/.git/config' '/app/config/security-probe.txt' '/core/security-probe.txt' '/core/security-probe.php' '/storage/security-probe.txt' '/app/routes.php' '/core/functions.php' '/security-probe.bak' '/security-probe.old' '/security-probe.php~' '/security-probe.swp' '/app/' '/core' '/core/' '/storage/' '/%2eenv' '/app//config/security-probe.txt' '/app/./config/security-probe.txt' '/media/../core/security-probe.txt' '/APP/config/security-probe.txt'; do
   private GET "$path" || failed=1
 done
 # Some servers reject encoded slashes before routing; a 400 is safe only for

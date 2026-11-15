@@ -39,6 +39,8 @@ class SecurityHandler(http.server.BaseHTTPRequestHandler):
             status, body = 403, b'ARIX_TEST_PRIVATE_7F3B'
         elif self.mode == 'redirect' and self.path == '/.env':
             status, body = 302, b'Redirect'
+        elif self.mode == 'core-redirect' and self.path == '/core':
+            status, body = 301, b'Redirect'
         elif self.mode == 'encoded-leak' and self.path == '/app%2fconfig/security-probe.txt':
             status, body = 403, b'ARIX_TEST_PRIVATE_7F3B'
         elif self.mode == 'encoded-bad-request' and self.path == '/app%2fconfig/security-probe.txt':
@@ -50,6 +52,8 @@ class SecurityHandler(http.server.BaseHTTPRequestHandler):
         else:
             status, body = 403, b'Forbidden'
         self.send_response(status)
+        if self.mode == 'core-redirect' and self.path == '/core':
+            self.send_header('Location', '/core/')
         self.end_headers()
         self.wfile.write(body)
 
@@ -130,6 +134,12 @@ class SuiteTests(unittest.TestCase):
         result = subprocess.run(command, env=env, capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.addCleanup(setattr, SecurityHandler, 'mode', 'safe')
+        SecurityHandler.mode = 'core-redirect'
+        result = subprocess.run(command + ['private'], env=env, capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('FAIL GET /core: HTTP 301', result.stderr)
+        self.assertIn('Location: /core/', result.stderr)
+        self.assertIn('PASS GET /core/', result.stdout)
         SecurityHandler.mode = 'encoded-bad-request'
         result = subprocess.run(command, env=env, capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
