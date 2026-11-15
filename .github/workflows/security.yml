@@ -100,6 +100,12 @@ jobs:
                 echo "RESULT $scenario $scope: FAIL"
               fi
             done
+            echo 'Response headers for POST requests to existing assets:'
+            for path in /styles/app.css /scripts/app.js /media/security-probe.png /fonts/source-sans-3-roman-latin.woff2; do
+              echo "POST $path"
+              curl --path-as-is --silent --show-error --max-time 10 --request POST --output /dev/null \
+                --dump-header - "http://127.0.0.1:8080$path"
+            done
             echo 'Response headers for GET /core:'
             curl --path-as-is --silent --show-error --max-time 10 --output /dev/null \
               --dump-header - http://127.0.0.1:8080/core
