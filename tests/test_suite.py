@@ -76,25 +76,41 @@ class SuiteTests(unittest.TestCase):
     def test_prepare_creates_fixtures_and_records_commit(self):
         with tempfile.TemporaryDirectory() as directory:
             parent = pathlib.Path(directory)
-            cli = parent / 'arix'
-            cli.write_text('''#!/bin/sh
-if [ "$1" = "--version" ]; then echo "Arix 0.4.5"; exit; fi
-mkdir -p "$3/$2/app/config" "$3/$2/core" "$3/$2/storage" "$3/$2/media"
-touch "$3/$2/index.php" "$3/$2/.htaccess"
-echo '{"version":"1"}' > "$3/$2/.arix.json"
-echo "Skeleton arixphp/app commit 1234567890123456789012345678901234567890."
-''')
-            cli.chmod(0o755)
-            env = dict(os.environ, ARIX_BIN=str(cli))
+            source = parent / 'source'
+            source.mkdir()
+            subprocess.run(['git', 'init', '-q', '-b', 'experiment', str(source)], check=True)
+            for name in ('index.php', '.htaccess'):
+                (source / name).write_text('')
+            (source / '.arix.json').write_text('{"version":"1"}\n')
+            subprocess.run(['git', '-C', str(source), 'add', '.'], check=True)
+            subprocess.run(['git', '-C', str(source), '-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', 'commit', '-qm', 'fixture'], check=True)
+            sha = subprocess.check_output(['git', '-C', str(source), 'rev-parse', 'HEAD'], text=True).strip()
+            env = dict(os.environ, APP_REPOSITORY=str(source), APP_REF='experiment')
             result = subprocess.run(
                 ['bash', str(ROOT / 'scripts/prepare-app.sh'), str(parent)],
                 env=env, capture_output=True, text=True,
             )
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-            self.assertIn('1234567890123456789012345678901234567890', result.stdout)
+            self.assertIn(sha, result.stdout)
             self.assertEqual((parent / 'app/.env').read_text(), 'ARIX_SECURITY_PROBE=ARIX_TEST_PRIVATE_7F3B\n')
             self.assertEqual((parent / 'app/.arix.json').read_text(), '{"version":"1"}\n')
             self.assertEqual((parent / 'app' / FONT).read_bytes(), (ROOT / 'fixtures' / FONT).read_bytes())
+
+    def test_prepare_uses_requested_git_branch_without_git_metadata(self):
+        with tempfile.TemporaryDirectory() as directory:
+            parent = pathlib.Path(directory)
+            source = parent / 'source'
+            source.mkdir()
+            subprocess.run(['git', 'init', '-q', '-b', 'experiment', str(source)], check=True)
+            for name in ('index.php', '.htaccess', '.arix.json'):
+                (source / name).write_text(name)
+            subprocess.run(['git', '-C', str(source), 'add', '.'], check=True)
+            subprocess.run(['git', '-C', str(source), '-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', 'commit', '-qm', 'fixture'], check=True)
+            sha = subprocess.check_output(['git', '-C', str(source), 'rev-parse', 'HEAD'], text=True).strip()
+            result = subprocess.run(['bash', str(ROOT / 'scripts/prepare-app.sh'), str(parent / 'output')], env=dict(os.environ, APP_REPOSITORY=str(source), APP_REF='experiment'), capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertEqual((parent / 'output/app-sha.txt').read_text().strip(), sha)
+            self.assertEqual((parent / 'output/app/.git/config').read_text(), 'ARIX_TEST_PRIVATE_7F3B\n')
 
     def test_http_suite_accepts_protected_server_and_rejects_leak(self):
         server = http.server.HTTPServer(('127.0.0.1', 0), SecurityHandler)

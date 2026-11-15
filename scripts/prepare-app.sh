@@ -3,7 +3,8 @@ set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
 parent="${1:-$root/.work}"
-arix="${ARIX_BIN:-arix}"
+repository="${APP_REPOSITORY:-https://github.com/arixphp/app.git}"
+ref="${APP_REF:-bugfix/experiment-litespeed-assets}"
 mkdir -p "$parent"
 parent="$(cd "$parent" && pwd -P)"
 if [[ -e "$parent/app" || -L "$parent/app" ]]; then
@@ -11,15 +12,18 @@ if [[ -e "$parent/app" || -L "$parent/app" ]]; then
   exit 1
 fi
 
-"$arix" --version
-output="$("$arix" new app "$parent" --no-interaction)"
-printf '%s\n' "$output"
-sha="$(printf '%s\n' "$output" | sed -nE 's/.*Skeleton arixphp\/app commit ([a-f0-9]{40})\..*/\1/p')"
+source_dir="$(mktemp -d "${TMPDIR:-/tmp}/arix-source.XXXXXXXX")"
+trap 'rm -rf "$source_dir"' EXIT
+git clone --quiet --no-checkout --branch "$ref" -- "$repository" "$source_dir/repo"
+sha="$(git -C "$source_dir/repo" rev-parse HEAD)"
 if [[ ! "$sha" =~ ^[a-f0-9]{40}$ ]]; then
   echo 'Cannot identify skeleton commit' >&2
   exit 1
 fi
 app="$parent/app"
+mkdir "$app"
+git -C "$source_dir/repo" archive "$sha" | tar -x -C "$app"
+echo "Skeleton $repository ref $ref commit $sha"
 for required in index.php .arix.json .htaccess; do
   if [[ ! -f "$app/$required" ]]; then
     echo "Missing required application file: $required" >&2

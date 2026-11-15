@@ -1,6 +1,6 @@
 # Arix deployment security tests
 
-This independent suite creates an application using the Arix CLI and checks it
+This independent suite exports an application from a Git branch and checks it
 over HTTP with its application directory as the document root. It never copies
 these tests or server configurations into `arixphp/app`.
 
@@ -22,7 +22,7 @@ establish compatibility with any particular hosting provider.
 
 ## Local use
 
-Install the official Arix CLI (CI pins 0.4.5), Docker, curl, Bash and Python 3.
+Install Git, Docker, curl, Bash and Python 3.
 Run from this directory:
 
 ```sh
@@ -45,13 +45,13 @@ laboratory configurations, not production installation instructions.
 Preparation refuses to overwrite `.work/app`; remove or relocate that specific
 directory yourself when you want to create another application. To use a
 different workspace pass its parent directory as the first argument, but the
-Docker build expects `.work/app`. The SHA printed by `arix new` is also stored in
-`.work/app-sha.txt`. `ARIX_BIN` selects an installed CLI executable.
+Docker build expects `.work/app`. The resolved Git commit is printed and stored in
+`.work/app-sha.txt`. `APP_REF` selects the application branch or tag; the default
+is `bugfix/experiment-litespeed-assets`. `APP_REPOSITORY` selects the Git source.
 
-The CLI resolves the current `main` of `arixphp/app`; it does not accept a
-specific commit. Recording its SHA identifies what was tested, but does not
-allow this suite to recreate an arbitrary revision or test a particular app PR.
-The CLI version and container base image are pinned; package repositories used
+The selected branch or tag must exist in the source repository. GitHub's manual
+workflow accepts an `app_ref` input and logs the resolved commit SHA. The
+container base image is pinned; package repositories used
 during the image build are not frozen, so the complete build is not bit-for-bit
 reproducible.
 
