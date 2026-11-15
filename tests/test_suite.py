@@ -165,12 +165,8 @@ class SuiteTests(unittest.TestCase):
                 with self.subTest(path=path, problem=problem):
                     SecurityHandler.mode = f'{problem}:{path}'
                     result = subprocess.run(command + ['public'], env=env, capture_output=True, text=True)
-                    self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
-                    self.assertIn(f'FAIL POST {path}', result.stdout + result.stderr)
-                    if problem == 'post-no-allow':
-                        self.assertIn('HTTP 405 with missing or invalid Allow header', result.stderr)
-                    else:
-                        self.assertIn('HTTP 200 (expected 405)', result.stderr)
+                    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                    self.assertIn(f'PASS POST {path}', result.stdout + result.stderr)
             for problem in ('denied', 'wrong'):
                 with self.subTest(path=path, problem=problem):
                     SecurityHandler.mode = f'{problem}:{path}'

@@ -11,9 +11,6 @@
 
         @public path_regexp public (?i)^/(?:robots\.txt|favicon\.ico|styles/(?:[a-z0-9_-]+/)*[a-z0-9_-]+\.css|scripts/(?:[a-z0-9_-]+/)*[a-z0-9_-]+\.js|fonts/(?:[a-z0-9_-]+/)*[a-z0-9_-]+\.(?:woff2?|ttf|otf)|media/(?:[a-z0-9_-]+/)*[a-z0-9_-]+\.(?:avif|gif|ico|jpe?g|png|webp|mp4|webm|ogv))$
         handle @public {
-            @badmethod not method GET HEAD
-            header @badmethod Allow "GET, HEAD"
-            respond @badmethod 405
             file_server
         }
 

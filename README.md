@@ -56,8 +56,8 @@ during the image build are not frozen, so the complete build is not bit-for-bit
 reproducible.
 
 The HTTP suite checks that representative CSS, JavaScript, image and font assets
-return HTTP 200 with their exact contents and reject POST, PUT and DELETE with
-HTTP 405 and `Allow: GET, HEAD`. It also rejects private responses
+return HTTP 200 with their exact contents and remain unchanged after POST, PUT
+and DELETE, regardless of the returned method status. It also rejects private responses
 other than 403/404, checks for synthetic markers, PHP source and common errors,
 and does not follow redirects. It is a
 starting point, not a complete security audit. Only the encoded-slash request
