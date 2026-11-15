@@ -28,8 +28,13 @@ asset_method() {
     echo "FAIL $method $path: connection error" >&2
     return 1
   fi
-  if [[ "$status" != 405 ]] || ! tr -d '\r' < "$headers" | grep -Eiq '^Allow:[[:space:]]*GET[[:space:]]*,[[:space:]]*HEAD[[:space:]]*$'; then
-    echo "FAIL $method $path: HTTP $status or invalid Allow header" >&2
+  if [[ "$status" != 405 ]]; then
+    echo "FAIL $method $path: HTTP $status (expected 405)" >&2
+    return 1
+  fi
+  if ! tr -d '\r' < "$headers" | grep -Eiq '^Allow:[[:space:]]*GET[[:space:]]*,[[:space:]]*HEAD[[:space:]]*$'; then
+    echo "FAIL $method $path: HTTP 405 with missing or invalid Allow header" >&2
+    tr -d '\r' < "$headers" | grep -i '^Allow:' >&2 || true
     return 1
   fi
   echo "PASS $method $path ($status)"
