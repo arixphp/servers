@@ -4,6 +4,11 @@ set -euo pipefail
 base="${BASE_URL:-http://127.0.0.1:8080}"
 root="$(cd "$(dirname "$0")/.." && pwd)"
 app="${ARIX_APP:-$root/.work/app}"
+scope="${1:-all}"
+if [[ "$scope" != all && "$scope" != public && "$scope" != private ]] || (( $# > 1 )); then
+  echo 'Usage: run-security-tests.sh [all|public|private]' >&2
+  exit 2
+fi
 body="$(mktemp)"
 trap 'rm -f "$body"' EXIT
 
@@ -50,6 +55,7 @@ public() {
   echo "PASS GET $path ($status)"
 }
 
+if [[ "$scope" != public ]]; then
 for path in '/.env' '/.arix.json' '/.git/config' '/app/config/security-probe.txt' '/core/security-probe.txt' '/core/security-probe.php' '/storage/security-probe.txt' '/app/routes.php' '/core/functions.php' '/security-probe.bak' '/security-probe.old' '/security-probe.php~' '/security-probe.swp' '/app/' '/core' '/storage/' '/%2eenv' '/app//config/security-probe.txt' '/app/./config/security-probe.txt' '/media/../core/security-probe.txt' '/APP/config/security-probe.txt'; do
   private GET "$path"
 done
@@ -64,8 +70,13 @@ if [[ "$status" != 403 && "$status" != 404 ]]; then
   exit 1
 fi
 echo "PASS HEAD /.env ($status)"
-public '/' '<html'
-public '/about' '<html'
+fi
+if [[ "$scope" != private ]]; then
+failed=0
+public '/' '<html' || failed=1
+public '/about' '<html' || failed=1
 for path in '/styles/app.css' '/scripts/app.js' '/media/security-probe.png' '/fonts/source-sans-3-roman-latin.woff2'; do
-  public_asset "$path"
+  public_asset "$path" || failed=1
 done
+exit "$failed"
+fi

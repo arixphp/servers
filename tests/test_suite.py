@@ -104,6 +104,21 @@ echo "Skeleton arixphp/app commit 1234567890123456789012345678901234567890."
         SecurityHandler.mode = 'encoded-bad-request'
         result = subprocess.run(command, env=env, capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        SecurityHandler.mode = 'leak'
+        result = subprocess.run(command + ['public'], env=env, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn('PASS GET /styles/app.css', result.stdout)
+        result = subprocess.run(command + ['private'], env=env, capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('FAIL GET /.env', result.stdout + result.stderr)
+        self.assertNotIn('PASS GET /styles/app.css', result.stdout)
+        result = subprocess.run(command + ['invalid'], env=env, capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        SecurityHandler.mode = 'denied:/styles/app.css'
+        result = subprocess.run(command + ['public'], env=env, capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('PASS GET /scripts/app.js', result.stdout)
+        self.assertIn('PASS GET /' + FONT, result.stdout)
         for mode in ('leak', 'body', 'redirect', 'encoded-leak', 'encoded-bad-request-leak', 'php-execution'):
             with self.subTest(mode=mode):
                 SecurityHandler.mode = mode

@@ -25,6 +25,8 @@ jobs:
             port: 80
           - server: openlitespeed
             port: 8088
+          - server: litespeed
+            port: 80
           - server: frankenphp
             port: 80
     steps:
@@ -48,9 +50,13 @@ jobs:
       - name: Start server
         run: docker run -d --name arix-test -p "127.0.0.1:8080:${{ matrix.port }}" "arix-security:${{ matrix.server }}"
       - name: Wait for server
+        id: ready
         run: bash scripts/wait-http.sh http://127.0.0.1:8080/
-      - name: Run compliance tests
-        run: bash scripts/run-security-tests.sh
+      - name: Check public access
+        run: bash scripts/run-security-tests.sh public
+      - name: Check private access
+        if: ${{ !cancelled() && steps.ready.outcome == 'success' }}
+        run: bash scripts/run-security-tests.sh private
       - name: Logs on failure
         if: failure()
         run: docker logs arix-test || true

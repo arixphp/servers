@@ -4,6 +4,8 @@
 !docker/apache/site.conf
 !docker/frankenphp/
 !docker/frankenphp/Caddyfile
+!docker/litespeed/
+!docker/litespeed/Dockerfile
 !docker/nginx/
 !docker/nginx/default.conf
 !docker/nginx/start.sh

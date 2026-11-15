@@ -6,8 +6,11 @@ these tests or server configurations into `arixphp/app`.
 
 ## Current state
 
-The Linux matrix contains Apache 2.4, Nginx + PHP-FPM 8.4, OpenLiteSpeed +
-PHP 8.4, and Caddy with FrankenPHP. IIS is not implemented yet.
+The Linux matrix contains Apache 2.4, Nginx + PHP-FPM 8.4, OpenLiteSpeed and
+LiteSpeed Enterprise with PHP 8.4, and Caddy with FrankenPHP. IIS is not
+implemented yet. Enterprise uses the official container's automatically
+requested trial license; availability and repeated CI activation are not yet
+verified. Neither LiteSpeed configuration reproduces a particular host's setup.
 
 In local HTTP tests with skeleton commit `8c7c9146454f3f8710909b70188459f051b314b5`,
 Nginx and FrankenPHP passed the current battery. Apache returned HTTP 500
@@ -33,8 +36,8 @@ docker logs arix-test
 docker rm -f arix-test
 ```
 
-Replace `frankenphp` in the build path and image name with `apache`, `nginx`
-or `openlitespeed` to test another server. OpenLiteSpeed listens on container
+Replace `frankenphp` in the build path and image name with `apache`, `nginx`,
+`litespeed` or `openlitespeed` to test another server. OpenLiteSpeed listens on container
 port 8088, so its port mapping is `127.0.0.1:8080:8088`. Nginx runs PHP-FPM
 and Nginx in one test container; FrankenPHP integrates PHP with Caddy. These are
 laboratory configurations, not production installation instructions.
@@ -61,3 +64,9 @@ starting point, not a complete security audit. Only the encoded-slash request
 checked for leaks. CI runs on pull requests, pushes,
 weekly and manually. A workflow in this repository does not automatically
 become a required check on `arixphp/app`.
+
+CI runs public and private checks separately, so a failure in either does not
+hide the other. `run-security-tests.sh public` or `private` selects one group;
+without arguments it runs both. Public checks report every asset even if another
+public request fails. A passing run checks the generated skeleton, not the
+historical configuration from a deployed application.
